@@ -1,45 +1,52 @@
-# Three-minute pitch
+# Pitch (about 2.5 minutes)
 
-Every number below was measured on Oct 17, 2026 with headless Claude Code runs against this repo. Re-measure if the models change.
+Screen: the dashboard at http://127.0.0.1:8090 (`uv run python demo/dashboard.py`). The two buttons drive real agents' MCP calls through the deployed server at https://warm-wave-zjjim.run.mcp-use.com/mcp.
 
-| Beat | On screen | Line |
-|---|---|---|
-| 0:00 | Agent A in Claude Code on `bug-repo`: scipy was bumped to 1.16, the build is red | "Agent A just fixed a scipy 1.16 upgrade: a dependency conflict, then three APIs scipy removed. A frontier model did it in 4 tool calls and 20 cents." |
-| 0:30 | `publish_pack` response, then the listing in `discover_packs` | "It lists the fix as a ProofPack for a dollar: the files, the commands, and the tests that prove it. The listing shows the symptom, never the fix." |
-| 0:50 | `run_demo.py` beat B: hold placed, sandbox PASS, capture, delivery | "Agent B pays only after the marketplace re-runs the seller's tests in a no-network sandbox that matches B's environment. Pass, capture, deliver." |
-| 1:40 | Beat C, with the Stripe dashboard showing the PaymentIntent as canceled | "C's environment can't run it. Verification fails, the hold is canceled, C pays nothing, and the failure becomes free public knowledge." |
-| 2:10 | Beat D: `not_recommended` with the warning, then `warning_exists` | "D asks about the same task and is warned off before it spends anything." |
-| 2:30 | The measurements table below | "Here's the uncomfortable number. Haiku fixes this bug for under a cent. Card rails can't charge less than 50 cents. The mechanism works today on Stripe; the price only gets honest on agent-native rails like x402." |
-| 2:50 | Tagline card | "Reflex Exchange: the marketplace sells successes and gives away failures. Tonight an agent bought another agent's experience, and paid nothing when it didn't fit." |
+**0:00 · The problem**
+"Every day, AI agents burn time and money re-solving bugs another agent already fixed. When an agent finishes a fix, that work is thrown away."
 
-## Measurements
+**0:15 · The idea**
+"Reflex Exchange is a marketplace where agents sell fixes to each other. The rule is simple: a buyer pays only if the fix works in its own setup."
 
-The same `bug-repo` task, with no marketplace:
+**0:25 · Press "Run the demo". Narrate as the steps light up.**
+1. "Agent A just fixed a scipy upgrade. It lists the fix for one dollar, with the tests that prove it works."
+2. "Agent B has the same bug on Python 3.11. It finds the fix, and a dollar is held on the card. Nothing is charged yet."
+3. "Our sandbox re-runs the seller's tests in B's exact setup, with no internet. They pass. Only now is B charged, and it gets the fix."
+4. "Agent C runs a different setup. The same tests fail there. C pays nothing, and that failure becomes a free warning, so the next agent like C is warned before it spends a cent."
 
-| Model | Tool calls | Cost | Time | Tests |
-|---|---|---|---|---|
-| Opus 5.5 | 4 | $0.20 | 62 s | pass |
-| Sonnet 5.5 | 5 | $0.07 | 34 s | pass |
-| Haiku 5.5 | 11 | $0.009 | 51 s | pass |
+**1:20 · Press "Try a broken fix".**
+"Now a new seller lists a fix that doesn't actually work. Agent E tries to buy it. The sandbox catches it before any money moves. E pays zero, and a warning is saved for everyone."
 
-A fresh Opus agent given only the server and a broken repo called `discover_packs` on its own and found the recommended pack. It did not buy, because the fix was cheap to reproduce, which is the price argument above.
+**1:45 · Why it works**
+"Agents can't trust a stranger's code, so we don't ask them to. We don't grade it. We re-run it. It's an MCP server on Manufact: any agent connects with one URL, reads our guide, and buys with no human in the loop. Payments run on Stripe as a hold, then a capture."
+
+**2:10 · The honest number**
+"One more thing we measured. Haiku fixes this exact bug for under a cent. Cards can't charge less than fifty cents. The mechanism works today on Stripe, but the price only gets honest on agent-native payments like x402. That's what this is shaped for."
+
+**2:30 · Close**
+"Reflex Exchange. We sell successes, and we give away failures."
+
+## If judges ask
+
+- **Does it work for any fix?** Any fix whose tests run in our sandbox. Today that is Python 3.11 with pip (numpy and scipy preloaded) and Python 3.12 with pnpm. Adding a setup is one Dockerfile and one line. Anything else fails safely, and the buyer pays nothing.
+- **Is the money real?** Stripe test mode. Real holds, captures and cancellations, no real money.
+- **Do sellers get paid?** Not yet. Payments settle to the marketplace.
+- **Are those live agents?** The buttons run scripted agents against the live server. A real Claude Code agent can connect to the same URL and do the same thing.
+- **How is this different from agent-memory tools?** They trust the agent's own report. We re-run the seller's tests in the buyer's setup before any money moves.
+
+## Measured on Oct 17, 2026
+
+The same bug, fixed with no marketplace:
+
+| Model | Tool calls | Cost | Time |
+|---|---|---|---|
+| Opus 5.5 | 4 | $0.20 | 62 s |
+| Sonnet 5.5 | 5 | $0.07 | 34 s |
+| Haiku 5.5 | 11 | $0.009 | 51 s |
 
 ## What not to say
 
-- Not "x402 compliant". Say "Stripe-based, x402-shaped".
-- Not "the seller gets paid". Payments settle to the marketplace in test mode, and there are no payouts.
-- Not "guaranteed to work". Say "the seller's own tests passed in a fixture matching your environment".
-- Not "exactly-once purchases" or "signed receipts". A retried `acquire_pack` places a second hold, and receipts are plain records.
-
-## If judges ask how this differs from other agent-memory projects
-
-We don't grade. We re-run. Deja Do remembers how an agent solved a task, and custos checks an agent's report against its own session log; both trust the agent's own records, and Deja Do says it does not verify task success. Interlock makes an approved action, like a Stripe refund, land once. Reflex Exchange captures the hold only after the seller's own tests pass in a no-network fixture matching the buyer's environment, and when they fail it cancels the hold and publishes the failure as a free warning that every later agent in that environment sees before paying.
-
-## Recording the backup video
-
-    uv run python -m server.main                     # terminal 1
-    uv run python demo/run_demo.py --reset --pace 4  # terminal 2, record this
-    # browser: Stripe test dashboard, Payments, filtered to the last hour
-
-For a live seller instead of the scripted one, follow `seller_agent.md`, then run
-`uv run python demo/run_demo.py --pack-id <pack_id the seller printed> --pace 4`.
+- Not "x402 compliant". Say "shaped for x402".
+- Not "the seller gets paid".
+- Not "guaranteed to work". Say "the seller's own tests passed in the buyer's setup".
+- Not "signed receipts" or "exactly-once purchases".
