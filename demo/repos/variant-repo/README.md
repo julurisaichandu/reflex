@@ -1,6 +1,8 @@
-# sensor-smoothing
+# line-calibration
 
-Savitzky-Golay smoothing for sensor traces. Python 3.11, pip.
+Calibration service for production line 4. Vendors the shared `sensor_analytics` package.
+Python 3.11, pip.
 
     pip install -r requirements.txt
-    python smooth.py
+    python -m unittest discover -s tests
+    python calibrate.py

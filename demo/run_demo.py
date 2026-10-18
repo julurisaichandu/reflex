@@ -1,6 +1,7 @@
 """Non-interactive A -> B -> C -> D demo against a running Reflex Exchange MCP server.
 
     uv run python demo/run_demo.py --reset             # local server, empty marketplace first
+    uv run python demo/run_demo.py --reset-only        # empty the marketplace before live agent sessions
     uv run python demo/run_demo.py --json              # also print every raw response
     uv run python demo/run_demo.py --pace 4            # pause between beats for narration
     MCP_URL=https://<host>/mcp uv run python demo/run_demo.py
@@ -11,6 +12,7 @@ import asyncio
 import json
 import os
 import time
+from pathlib import Path
 
 from dotenv import load_dotenv
 from mcp import ClientSession
@@ -23,21 +25,36 @@ PY311_PIP = {"language": "python", "language_version": "3.11", "os": "linux", "p
 PY312_PNPM = {"language": "python", "language_version": "3.12", "os": "linux", "package_manager": "pnpm", "key_deps": ["numpy", "scipy"]}
 TASK = "pip install failing with ResolutionImpossible on numpy"
 
+# Agent A's fix for demo/repos/bug-repo, as the scripted seller publishes it.
+PROOFPACK = Path(__file__).resolve().parent / "proofpack"
+
 PACK = {
-    "title": "Fix pip ResolutionImpossible on pinned numpy/scipy conflict",
-    "task_signature": "pip install fails: ResolutionImpossible numpy scipy",
-    "description": "scipy 1.16 needs numpy>=1.25.2, so a numpy==1.24.* pin cannot resolve. Relax the numpy pin to >=1.24,<2 and reinstall.",
+    "title": "Upgrade to scipy 1.16: fix pip ResolutionImpossible and the numpy/scipy APIs it removed",
+    "task_signature": "pip install fails: ResolutionImpossible numpy scipy 1.16; then AttributeError simps binom_test, interp2d removed",
+    "description": (
+        "scipy 1.16 needs numpy>=1.25.2, so a numpy==1.24.* pin cannot resolve. Once it does, scipy 1.16 has removed "
+        "integrate.simps, stats.binom_test and interp2d: port them to simpson(x=), binomtest().pvalue and "
+        "RectBivariateSpline(kx=1, ky=1), and replace the numpy aliases removed in 2.0."
+    ),
     "trace": {
         "steps": [
             {"tool": "bash", "input": "pip install -r requirements.txt", "outcome": "error"},
-            {"tool": "edit", "input": "requirements.txt: numpy==1.24.* -> numpy>=1.24,<2", "outcome": "ok"},
-            {"tool": "bash", "input": "pip install -r requirements.txt", "outcome": "ok"},
+            {"tool": "edit", "input": "requirements.txt: numpy==1.24.* -> numpy>=1.25.2,<2", "outcome": "ok"},
+            {"tool": "bash", "input": "python -m unittest discover -s tests", "outcome": "error"},
+            {"tool": "edit", "input": "stats.py: simps(y, t) -> simpson(y, x=t); binom_test(...) -> binomtest(...).pvalue", "outcome": "ok"},
+            {"tool": "edit", "input": "stats.py: interp2d(x, y, z)(xs, ys) -> RectBivariateSpline(y, x, z, kx=1, ky=1)(ys, xs)", "outcome": "ok"},
+            {"tool": "edit", "input": "stats.py: np.float_ -> np.float64, np.NaN -> np.nan, np.product -> np.prod", "outcome": "ok"},
+            {"tool": "bash", "input": "python -m unittest discover -s tests", "outcome": "ok"},
         ],
-        "solution_files": {"requirements.txt": "numpy>=1.24,<2\nscipy==1.16.*\n"},
+        "solution_files": {
+            str(p.relative_to(PROOFPACK)): p.read_text()
+            for p in sorted(PROOFPACK.rglob("*"))
+            if p.is_file() and "__pycache__" not in p.parts
+        },
     },
     "tests": [
         {"cmd": "pip install -r requirements.txt", "expect_exit": 0},
-        {"cmd": "python -c 'import numpy, scipy'", "expect_exit": 0},
+        {"cmd": "python -m unittest discover -s tests", "expect_exit": 0},
     ],
     "env_fingerprint": PY311_PIP,
     "price_cents": 100,
@@ -103,8 +120,8 @@ async def shop(agent: Agent, pack_id: str, follow_recommendation: bool) -> dict:
     if v["result"] == "pass":
         files = ", ".join(v["pack"]["solution_files"])
         print(f"  {GREEN}{BOLD}PASS{RESET}{GREEN}: {v['pack']['tests_passed']} tests passed -> payment CAPTURED -> delivered {files}{RESET}")
-        for name, body in v["pack"]["solution_files"].items():
-            print(f"{DIM}    --- {name}\n" + "".join(f"    {line}\n" for line in body.splitlines()) + RESET, end="")
+        requirements = v["pack"]["solution_files"].get("requirements.txt", "")
+        print(f"{DIM}    --- requirements.txt\n" + "".join(f"    {line}\n" for line in requirements.splitlines()) + RESET, end="")
         return {"outcome": "verified, pack delivered", "paid": money(v["receipt"]["amount_cents"]), "pi": tx["stripe_payment_intent_id"]}
     e = v["evidence"]
     print(f"  {RED}{BOLD}FAIL{RESET}{RED} in fixture {e['fixture']}: `{e['failed_test']}` exited {e['exit_code']} ({e['error_class']})")
@@ -122,8 +139,10 @@ def reset() -> None:
 
 
 async def main(args: argparse.Namespace) -> None:
-    if args.reset:
+    if args.reset or args.reset_only:
         reset()
+    if args.reset_only:
+        return
     async with streamablehttp_client(MCP_URL) as (read, write, _):
         async with ClientSession(read, write) as s:
             await s.initialize()
@@ -154,6 +173,7 @@ async def main(args: argparse.Namespace) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--reset", action="store_true", help="truncate marketplace tables first (uses DATABASE_URL)")
+    parser.add_argument("--reset-only", action="store_true", help="truncate marketplace tables and exit")
     parser.add_argument("--json", action="store_true", help="print every raw tool response")
     parser.add_argument("--pace", type=float, default=0, help="seconds to pause before each beat")
     asyncio.run(main(parser.parse_args()))

@@ -2,9 +2,11 @@
   "name": "ops-dashboard",
   "private": true,
   "packageManager": "pnpm@9.15.9",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "pnpm -r dev",
-    "analytics": "python services/analytics/signal_stats.py"
+    "test:analytics": "cd services/analytics && python -m unittest discover -s tests"
   }
 }

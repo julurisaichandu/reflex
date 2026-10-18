@@ -87,3 +87,17 @@ insert into agents (id, display_name) values
   ('agent-c', 'Buyer Agent C'),
   ('agent-d', 'Buyer Agent D')
 on conflict do nothing;
+
+-- Supabase exposes public tables through its Data API. Pack contents are the merchandise,
+-- so only the marketplace's own connection (the table owner, which bypasses RLS) may read them.
+alter table agents        enable row level security;
+alter table packs         enable row level security;
+alter table transactions  enable row level security;
+alter table verifications enable row level security;
+alter table warnings      enable row level security;
+do $$
+begin
+  if exists (select from pg_roles where rolname = 'anon') then
+    revoke all on all tables in schema public from anon, authenticated;
+  end if;
+end $$;

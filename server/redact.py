@@ -13,7 +13,12 @@ ERROR_CLASSES = [
     (re.compile(r"Permission denied|Read-only file system"), "PermissionDenied"),
     (re.compile(r"Temporary failure in name resolution|Network is unreachable|NewConnectionError"), "NetworkUnavailable"),
     (re.compile(r"SyntaxError"), "SyntaxError"),
+    (re.compile(r"AttributeError"), "AttributeError"),
+    (re.compile(r"NotImplementedError"), "NotImplementedError"),
+    (re.compile(r"TypeError"), "TypeError"),
+    (re.compile(r"ValueError"), "ValueError"),
     (re.compile(r"AssertionError"), "AssertionError"),
+    (re.compile(r"FAILED \((failures|errors)="), "TestsFailed"),
 ]
 
 
