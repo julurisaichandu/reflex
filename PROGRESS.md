@@ -35,3 +35,4 @@
 - 00:05 Related-project research (5 readers + synthesis): integrate neither custos nor Deja Do. Borrowed: listing-text hygiene (length caps, no control or invisible characters), pitch positioning, two more 'what not to say' lines.
 - 00:05 Third Armature dry run: agent fixed it itself without calling the marketplace. Two of three fresh runs skipped it; none bought. Consistent with the pitch's price argument.
 - 09:05 README_AGENTS.md wheelhouse row now matches the fixture. Stale 23:28 runner stopped. Demo green after a server restart: B verify 4.2 s end to end and captured, C canceled, D refused; Stripe states match.
+- 09:25 Deployed to Manufact at https://warm-wave-zjjim.run.mcp-use.com/mcp with Supabase and the laptop runner behind cloudflared. Full demo passed through it. Live dashboard in demo/dashboard.py.
