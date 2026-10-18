@@ -1,7 +1,9 @@
+import json
 import os
 import subprocess
 import tempfile
 import time
+import urllib.request
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -98,6 +100,23 @@ def _docker(*args: str, timeout: float) -> subprocess.CompletedProcess:
 
 
 def run(fixture: str, solution_files: dict[str, str], tests: list[dict]) -> SandboxResult:
+    url = os.environ.get("SANDBOX_URL")
+    if not url:
+        return run_local(fixture, solution_files, tests)
+    request = urllib.request.Request(
+        url,
+        data=json.dumps({"fixture": fixture, "solution_files": solution_files, "tests": tests}).encode(),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {os.environ['SANDBOX_TOKEN']}"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT_S + 60) as resp:
+            data = json.loads(resp.read())
+        return SandboxResult(data["fixture"], [TestRun(**r) for r in data["runs"]], data["duration_ms"])
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        raise SandboxUnavailable(f"remote sandbox at {url}: {type(e).__name__}") from e
+
+
+def run_local(fixture: str, solution_files: dict[str, str], tests: list[dict]) -> SandboxResult:
     start = time.monotonic()
     deadline = start + TIMEOUT_S
     name = f"reflex-sbx-{uuid.uuid4().hex[:12]}"
