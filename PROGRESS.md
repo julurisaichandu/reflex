@@ -7,12 +7,12 @@
 | 2 Real Stripe | done | captured and canceled PaymentIntents match transaction rows |
 | 3 Warnings + compatibility | done on stub payments | override, no_fixture, re-verify, traversal, and empty-tests paths checked |
 | 4 Demo assets | done | `uv run python demo/run_demo.py --reset` runs A to D on real Stripe and the real sandbox in 6 s |
-| 5 Deploy + polish | in progress | image and runner ready; needs Supabase URL, sandbox-host choice, Manufact account, and your go to upload |
+| 5 Deploy + polish | waiting on cloud DB | image, runner, and agent docs ready; Manufact deploy waits for Supabase cloud (a hosted server cannot reach local Postgres) |
 | 6 Stretch | todo | |
 
 ## Blockers
 
-- Supabase `DATABASE_URL` (session pooler). Running on local Postgres until then.
+- Manufact deploy needs, together: Supabase cloud `DATABASE_URL`, a Manufact account and the go to upload, and the sandbox host (InstaBox sign-in, or the laptop with cloudflared).
 
 ## Log
 
@@ -28,3 +28,7 @@
 - 23:27 Phase 4 checkpoint passed with real Stripe and the real sandbox.
 - 23:29 Deploy image proven: MCP server container (uid 10001, no Docker) plus host sandbox runner plus real Stripe ran all four beats. README_AGENTS.md updated for drift.
 - 23:31 Armature dry run started: fresh headless Claude Code session given only the local server URL.
+- 23:36 First Armature dry run: a fresh agent never called the marketplace and fixed the one-line pin bug itself (4 calls, $0.13). Demo bug replaced by a scipy 1.16 upgrade.
+- 23:40 Second dry run: the agent called discover_packs on its own, but the free description held the fix. Listings now carry only symptom and environment.
+- 23:43 Measured the demo bug without the marketplace: Opus 4 calls $0.20, Sonnet 5 calls $0.07, Haiku 11 calls $0.009. Pitch option (a) chosen: honest numbers, card-rail floor vs x402.
+- 23:50 Review fixes landed: replayable settlement, Stripe reconcile, lenient decode, path validation. Local Postgres stays until the cloud switch.
