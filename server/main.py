@@ -7,6 +7,8 @@ from typing import Annotated
 from dotenv import load_dotenv
 from mcp.types import ToolAnnotations
 from pydantic import Field
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
 
 from mcp_use.server import MCPServer
 from server.models import EnvFingerprint, PackTest, ToolError, Trace
@@ -32,6 +34,13 @@ Fingerprint = Annotated[
     EnvFingerprint,
     Field(description="The environment you need the fix in. Matching uses language + language_version + package_manager."),
 ]
+
+
+@server.custom_route("/", methods=["GET"])
+@server.custom_route("/llms.txt", methods=["GET"])
+@server.custom_route("/README_AGENTS.md", methods=["GET"])
+async def readme(request: Request) -> PlainTextResponse:
+    return PlainTextResponse(INSTRUCTIONS, media_type="text/markdown")
 
 
 async def _call(fn, *args):

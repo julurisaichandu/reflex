@@ -7,7 +7,7 @@
 | 2 Real Stripe | done | captured and canceled PaymentIntents match transaction rows |
 | 3 Warnings + compatibility | done on stub payments | override, no_fixture, re-verify, traversal, and empty-tests paths checked |
 | 4 Demo assets | done | `uv run python demo/run_demo.py --reset` runs A to D on real Stripe and the real sandbox in 6 s |
-| 5 Deploy + polish | todo | needs Manufact account and your go to push |
+| 5 Deploy + polish | in progress | image and runner ready; needs Supabase URL, sandbox-host choice, Manufact account, and your go to upload |
 | 6 Stretch | todo | |
 
 ## Blockers
@@ -22,7 +22,9 @@
 - 23:14 Phase 0 checkpoint passed. The four tools run end to end over MCP HTTP with stub payment and sandbox.
 - Known mcp-use 1.7.1 bug: a tools/call before any tools/list crashed in its middleware. `server/main.py` warms the SDK tool cache at startup.
 - 23:17 Phase 1 checkpoint passed. Same pack passes on py311-pip (2.6 s) and fails on py312-pnpm (exit 127, CommandNotFound), redacted evidence stored. Hostile tests contained: network, rootfs and pack writes, env secrets, 50 MB output, 900 MB allocation, fork bomb, 60 s sleep.
-- 23:24 Phase 3 paths verified. Phase 4 assets written. The bug and fix reproduce on the laptop against real PyPI.
-- 23:25 Background review workflow running (money, leaks, sandbox, spec, agent usability).
-- 23:31 Phase 2 checkpoint passed. API 2026-09-30 rejects `payment_method_types`; switched to `allowed_payment_method_types`. agent-b PI succeeded ($1.00 received), agent-c PI canceled ($0), both match DB rows.
-- 23:31 Phase 4 checkpoint passed with real Stripe and the real sandbox.
+- 23:20 Phase 3 paths verified. Phase 4 assets written. The bug and fix reproduce on the laptop against real PyPI.
+- 23:21 Background review workflow running (money, leaks, sandbox, spec, agent usability).
+- 23:27 Phase 2 checkpoint passed. API 2026-09-30 rejects `payment_method_types`; switched to `allowed_payment_method_types`. agent-b PI succeeded ($1.00 received), agent-c PI canceled ($0), both match DB rows.
+- 23:27 Phase 4 checkpoint passed with real Stripe and the real sandbox.
+- 23:29 Deploy image proven: MCP server container (uid 10001, no Docker) plus host sandbox runner plus real Stripe ran all four beats. README_AGENTS.md updated for drift.
+- 23:31 Armature dry run started: fresh headless Claude Code session given only the local server URL.
