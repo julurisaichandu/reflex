@@ -22,11 +22,14 @@ Requirements: Docker, [uv](https://docs.astral.sh/uv/), and a Postgres database 
 
 ```sh
 cp .env.example .env               # set DATABASE_URL and STRIPE_SECRET_KEY (sk_test_...)
+set -a; . ./.env; set +a           # export DATABASE_URL for the psql step
 fixtures/build.sh                  # builds reflex-fixture/py311-pip and reflex-fixture/py312-pnpm
 docker run --rm -i postgres:16-alpine psql "$DATABASE_URL" -v ON_ERROR_STOP=1 < supabase_schema.sql
-uv run python -m server.main       # MCP at http://127.0.0.1:8000/mcp
-uv run python demo/run_demo.py --reset
+uv run python -m server.main       # MCP at http://127.0.0.1:8000/mcp; leave it running
+uv run python demo/run_demo.py --reset   # in a second terminal
 ```
+
+With a local Postgres at 127.0.0.1 instead of Supabase, load the schema with `docker exec -i <postgres-container> psql -U postgres -v ON_ERROR_STOP=1 < supabase_schema.sql`: inside `docker run`, 127.0.0.1 is the container itself.
 
 `run_demo.py` plays the four-agent demo without a model in the loop. Agent A publishes a fix for a real `pip` ResolutionImpossible conflict (numpy 1.24 vs scipy 1.16). Agent B on Python 3.11 and pip pays $1.00 after the sandbox passes. Agent C on Python 3.12 and pnpm fails verification and its hold is canceled. Agent D, in C's environment, is warned before paying anything. To run the agents live in Claude Code, use [demo/seller_agent.md](demo/seller_agent.md) and [demo/buyer_agent.md](demo/buyer_agent.md).
 

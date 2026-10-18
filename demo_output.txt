@@ -1,0 +1,203 @@
+marketplace reset: packs, transactions, verifications, warnings truncated
+
+==============================================================================
+A  Seller agent publishes the fix it worked out as a ProofPack
+==============================================================================
+publish_pack -> {
+  "pack_id": "pk_3de235be",
+  "status": "listed",
+  "custos_status": "unverified",
+  "listing_url": "mcp://reflex-exchange/packs/pk_3de235be"
+}
+agent-a -> publish_pack: pk_3de235be listed at $1.00, 2 tests, fingerprint python3.11/pip
+
+==============================================================================
+B  Buyer on python3.11/pip pays only after the sandbox proves the fix
+==============================================================================
+agent-b -> discover_packs('pip install failing with ResolutionImpossible on numpy')
+discover_packs -> {
+  "packs": [
+    {
+      "pack_id": "pk_3de235be",
+      "title": "Upgrade to scipy 1.16: fix pip ResolutionImpossible and the numpy/scipy APIs it removed",
+      "description": "Gets a numpy 1.24 / scipy 1.16 project installing and its tests passing again on Python 3.11 with pip. Covers the dependency conflict and every numpy and scipy API the upgrade removed; golden-value tests prove numerics are unchanged.",
+      "price_cents": 100,
+      "custos_status": "unverified",
+      "compatibility": [],
+      "warnings_for_your_env": [],
+      "recommendation": "untested"
+    }
+  ]
+}
+  pk_3de235be  Upgrade to scipy 1.16: fix pip ResolutionImpossible and the numpy/scipy APIs it removed  $1.00
+    compatibility: no verifications yet
+    recommendation for your env: untested
+agent-b -> acquire_pack(pk_3de235be)
+acquire_pack -> {
+  "transaction_id": "tx_49383dbb22c4029f",
+  "payment_status": "authorized",
+  "amount_cents": 100,
+  "stripe_payment_intent_id": "pi_3URwneItpNSqEsos1ryuD46s",
+  "next_step": "Call verify_and_settle with this transaction_id. The pack is delivered only after sandbox verification passes and payment is captured. If verification fails, your authorization is canceled automatically."
+}
+  hold placed: $1.00 authorized, tx_49383dbb22c4029f, Stripe pi_3URwneItpNSqEsos1ryuD46s
+agent-b -> verify_and_settle(tx_49383dbb22c4029f)  (marketplace sandbox: no network, 1 CPU, 512 MB, non-root)
+verify_and_settle -> {
+  "result": "pass",
+  "payment": "captured",
+  "pack": {
+    "solution_files": {
+      "requirements.txt": "numpy>=1.25.2,<2\nscipy==1.16.*\n",
+      "tests/test_stats.py": "import unittest\n\nimport numpy as np\n\nfrom sensor_analytics import area_under_curve, drift_pvalue, mean_ignoring_gaps, resample_grid, total_gain\n\n\nclass StatsTest(unittest.TestCase):\n    def test_area_under_curve(self):\n        t = np.linspace(0.0, 2.0, 9)\n        self.assertAlmostEqual(area_under_curve(t, t**2), 8 / 3, places=9)\n\n    def test_drift_pvalue(self):\n        self.assertAlmostEqual(drift_pvalue(16, 20), 12392 / 2**20, places=12)\n\n    def test_resample_grid(self):\n        x, y = np.array([0.0, 1.0, 2.0, 3.0]), np.array([0.0, 1.0, 2.0])\n        z = 2 * x[None, :] + 3 * y[:, None]\n        xs, ys = np.array([0.5, 2.5]), np.array([0.25, 1.75])\n        np.testing.assert_allclose(resample_grid(x, y, z, xs, ys), 2 * xs[None, :] + 3 * ys[:, None])\n\n    def test_mean_ignoring_gaps(self):\n        self.assertAlmostEqual(mean_ignoring_gaps([1.0, -1.0, 3.0]), 2.0)\n\n    def test_total_gain(self):\n        self.assertAlmostEqual(total_gain([2.0, 0.5, 3.0]), 3.0)\n\n\nif __name__ == \"__main__\":\n    unittest.main()\n",
+      "sensor_analytics/stats.py": "import numpy as np\nfrom scipy import integrate, interpolate, stats\n\n\ndef area_under_curve(t, y):\n    \"\"\"Signal energy over time, by Simpson's rule.\"\"\"\n    return float(integrate.simpson(y, x=t))\n\n\ndef drift_pvalue(successes, trials, expected=0.5):\n    \"\"\"Two-sided binomial test: is the sensor drifting from the expected rate?\"\"\"\n    return float(stats.binomtest(successes, trials, expected).pvalue)\n\n\ndef resample_grid(x, y, z, xs, ys):\n    \"\"\"Bilinear resampling of a calibration grid z[y, x] onto the points (xs, ys).\"\"\"\n    return interpolate.RectBivariateSpline(y, x, z, kx=1, ky=1)(ys, xs)\n\n\ndef mean_ignoring_gaps(values):\n    \"\"\"Mean of a trace where negative readings mark dropped samples.\"\"\"\n    arr = np.asarray(values, dtype=np.float64)\n    arr[arr < 0] = np.nan\n    return float(np.nanmean(arr))\n\n\ndef total_gain(gains):\n    \"\"\"Overall gain of amplifier stages in series.\"\"\"\n    return float(np.prod(gains))\n",
+      "sensor_analytics/__init__.py": "from sensor_analytics.stats import area_under_curve, drift_pvalue, mean_ignoring_gaps, resample_grid, total_gain\n"
+    },
+    "steps": [
+      "bash: pip install -r requirements.txt (error)",
+      "edit: requirements.txt: numpy==1.24.* -> numpy>=1.25.2,<2 (ok)",
+      "bash: python -m unittest discover -s tests (error)",
+      "edit: stats.py: simps(y, t) -> simpson(y, x=t); binom_test(...) -> binomtest(...).pvalue (ok)",
+      "edit: stats.py: interp2d(x, y, z)(xs, ys) -> RectBivariateSpline(y, x, z, kx=1, ky=1)(ys, xs) (ok)",
+      "edit: stats.py: np.float_ -> np.float64, np.NaN -> np.nan, np.product -> np.prod (ok)",
+      "bash: python -m unittest discover -s tests (ok)"
+    ],
+    "tests": [
+      {
+        "cmd": "pip install -r requirements.txt",
+        "expect_exit": 0
+      },
+      {
+        "cmd": "python -m unittest discover -s tests",
+        "expect_exit": 0
+      }
+    ],
+    "tests_passed": 2
+  },
+  "receipt": {
+    "transaction_id": "tx_49383dbb22c4029f",
+    "amount_cents": 100,
+    "stripe_payment_intent_id": "pi_3URwneItpNSqEsos1ryuD46s"
+  }
+}
+  PASS: 2 tests passed -> payment CAPTURED -> delivered requirements.txt, tests/test_stats.py, sensor_analytics/stats.py, sensor_analytics/__init__.py
+    --- requirements.txt
+    numpy>=1.25.2,<2
+    scipy==1.16.*
+
+==============================================================================
+C  Buyer on python3.12/pnpm: verification fails, hold canceled, failure published
+==============================================================================
+agent-c -> discover_packs('pip install failing with ResolutionImpossible on numpy')
+discover_packs -> {
+  "packs": [
+    {
+      "pack_id": "pk_3de235be",
+      "title": "Upgrade to scipy 1.16: fix pip ResolutionImpossible and the numpy/scipy APIs it removed",
+      "description": "Gets a numpy 1.24 / scipy 1.16 project installing and its tests passing again on Python 3.11 with pip. Covers the dependency conflict and every numpy and scipy API the upgrade removed; golden-value tests prove numerics are unchanged.",
+      "price_cents": 100,
+      "custos_status": "unverified",
+      "compatibility": [
+        {
+          "fingerprint_summary": "python3.11/pip/linux",
+          "status": "pass",
+          "observations": 1
+        }
+      ],
+      "warnings_for_your_env": [],
+      "recommendation": "untested"
+    }
+  ]
+}
+  pk_3de235be  Upgrade to scipy 1.16: fix pip ResolutionImpossible and the numpy/scipy APIs it removed  $1.00
+    compatibility: python3.11/pip/linux pass x1
+    recommendation for your env: untested
+agent-c -> acquire_pack(pk_3de235be)
+acquire_pack -> {
+  "transaction_id": "tx_d046876a92269ad0",
+  "payment_status": "authorized",
+  "amount_cents": 100,
+  "stripe_payment_intent_id": "pi_3URwnpItpNSqEsos4Fu7L9K7",
+  "next_step": "Call verify_and_settle with this transaction_id. The pack is delivered only after sandbox verification passes and payment is captured. If verification fails, your authorization is canceled automatically."
+}
+  hold placed: $1.00 authorized, tx_d046876a92269ad0, Stripe pi_3URwnpItpNSqEsos4Fu7L9K7
+agent-c -> verify_and_settle(tx_d046876a92269ad0)  (marketplace sandbox: no network, 1 CPU, 512 MB, non-root)
+verify_and_settle -> {
+  "result": "fail",
+  "payment": "canceled",
+  "evidence": {
+    "fixture": "py312-pnpm",
+    "failed_test": "pip install -r requirements.txt",
+    "exit_code": 127,
+    "error_class": "CommandNotFound",
+    "note": "Pack contents withheld. Your authorization was canceled; you were not charged. A compatibility warning has been published for this environment."
+  },
+  "warning_id": "wn_b1e64221"
+}
+  FAIL in fixture py312-pnpm: `pip install -r requirements.txt` exited 127 (CommandNotFound)
+  -> authorization CANCELED, not charged -> warning wn_b1e64221 published
+
+==============================================================================
+D  Next python3.12/pnpm buyer is warned before spending anything
+==============================================================================
+agent-d -> discover_packs('pip install failing with ResolutionImpossible on numpy')
+discover_packs -> {
+  "packs": [
+    {
+      "pack_id": "pk_3de235be",
+      "title": "Upgrade to scipy 1.16: fix pip ResolutionImpossible and the numpy/scipy APIs it removed",
+      "description": "Gets a numpy 1.24 / scipy 1.16 project installing and its tests passing again on Python 3.11 with pip. Covers the dependency conflict and every numpy and scipy API the upgrade removed; golden-value tests prove numerics are unchanged.",
+      "price_cents": 100,
+      "custos_status": "unverified",
+      "compatibility": [
+        {
+          "fingerprint_summary": "python3.12/pnpm/linux",
+          "status": "fail",
+          "observations": 1
+        },
+        {
+          "fingerprint_summary": "python3.11/pip/linux",
+          "status": "pass",
+          "observations": 1
+        }
+      ],
+      "warnings_for_your_env": [
+        {
+          "warning_id": "wn_b1e64221",
+          "summary": "Verification failed on python3.12/pnpm/linux: `pip install -r requirements.txt` exited 127 (CommandNotFound). The buyer's payment was canceled.",
+          "evidence": {
+            "fixture": "py312-pnpm",
+            "exit_code": 127,
+            "error_class": "CommandNotFound",
+            "failed_test": "pip install -r requirements.txt"
+          },
+          "created_at": "2026-10-18T16:19:21.934406+00:00"
+        }
+      ],
+      "recommendation": "not_recommended"
+    }
+  ]
+}
+  pk_3de235be  Upgrade to scipy 1.16: fix pip ResolutionImpossible and the numpy/scipy APIs it removed  $1.00
+    compatibility: python3.12/pnpm/linux fail x1, python3.11/pip/linux pass x1
+    recommendation for your env: not_recommended
+    warning wn_b1e64221: Verification failed on python3.12/pnpm/linux: `pip install -r requirements.txt` exited 127 (CommandNotFound). The buyer's payment was canceled.
+agent-d follows the recommendation and does not buy. Spent $0.00.
+agent-d -> acquire_pack anyway, to show the marketplace guard
+acquire_pack -> {
+  "error": {
+    "code": "warning_exists",
+    "message": "1 recorded failure(s) match your environment (python3.12/pnpm/linux). Latest: Verification failed on python3.12/pnpm/linux: `pip install -r requirements.txt` exited 127 (CommandNotFound). The buyer's payment was canceled. Pass override_warning=true to buy anyway; you are still charged only if verification passes.",
+    "retryable": false
+  }
+}
+  refused: warning_exists. No payment was created.
+
+==============================================================================
+Ledger
+==============================================================================
+agent    environment       calls  paid    stripe                        outcome
+agent-b  python3.11/pip    3      $1.00   pi_3URwneItpNSqEsos1ryuD46s   verified, pack delivered
+agent-c  python3.12/pnpm   3      $0.00   pi_3URwnpItpNSqEsos4Fu7L9K7   verification failed, hold released
+agent-d  python3.12/pnpm   2      $0.00   none created                  warned before paying
+
+The marketplace sells successes and gives away failures.
