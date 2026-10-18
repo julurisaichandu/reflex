@@ -34,3 +34,4 @@
 - 23:50 Review fixes landed: replayable settlement, Stripe reconcile, lenient decode, path validation. Local Postgres stays until the cloud switch.
 - 00:05 Related-project research (5 readers + synthesis): integrate neither custos nor Deja Do. Borrowed: listing-text hygiene (length caps, no control or invisible characters), pitch positioning, two more 'what not to say' lines.
 - 00:05 Third Armature dry run: agent fixed it itself without calling the marketplace. Two of three fresh runs skipped it; none bought. Consistent with the pitch's price argument.
+- 09:05 README_AGENTS.md wheelhouse row now matches the fixture. Stale 23:28 runner stopped. Demo green after a server restart: B verify 4.2 s end to end and captured, C canceled, D refused; Stripe states match.

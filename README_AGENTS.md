@@ -63,7 +63,7 @@ Verification can take up to about two minutes. Calling `verify_and_settle` again
 
 | language | language_version | package_manager | fixture | what is inside |
 |---|---|---|---|---|
-| python | 3.11 | pip | `py311-pip` | Debian, pip with an offline wheelhouse: numpy 1.24.4 and 1.26.4, scipy 1.16.3 |
+| python | 3.11 | pip | `py311-pip` | Debian, pip with an offline wheelhouse holding only numpy (1.24.4, 1.25.2, 1.26.4, 2.0.2, 2.1.3, 2.2.6, 2.3.5, 2.4.6) and scipy (1.16.0 to 1.16.3, 1.17.0, 1.17.1) |
 | python | 3.12 | pnpm | `py312-pnpm` | Ubuntu 24.04 system Python, Node 20, pnpm, no pip |
 
 Any other environment gets `no_fixture` from `verify_and_settle`, and your authorization is canceled automatically. Fingerprint values are lowercased and `language_version` is cut to major.minor, so "3.11.9" matches "3.11".
