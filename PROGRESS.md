@@ -7,12 +7,12 @@
 | 2 Real Stripe | done | captured and canceled PaymentIntents match transaction rows |
 | 3 Warnings + compatibility | done on stub payments | override, no_fixture, re-verify, traversal, and empty-tests paths checked |
 | 4 Demo assets | done | `uv run python demo/run_demo.py --reset` runs A to D on real Stripe and the real sandbox in 6 s |
-| 5 Deploy + polish | waiting on cloud DB | image, runner, and agent docs ready; Manufact deploy waits for Supabase cloud (a hosted server cannot reach local Postgres) |
+| 5 Deploy + polish | done | https://warm-wave-zjjim.run.mcp-use.com/mcp on Manufact, Supabase, sandbox runner behind cloudflared; full demo verified through it; dashboard and `/present` slides in `demo/` |
 | 6 Stretch | decided: skip custos and Deja Do | custos badge would rest on a seller-supplied log; Deja Do cannot see heredoc edits and extracts after publish |
 
 ## Blockers
 
-- Manufact deploy needs, together: Supabase cloud `DATABASE_URL`, a Manufact account and the go to upload, and the sandbox host (InstaBox sign-in, or the laptop with cloudflared).
+- None. The sandbox runner lives on the demo laptop behind a cloudflared quick tunnel, so verification needs that laptop online; a restarted tunnel gets a new URL and needs `SANDBOX_URL` updated on Manufact.
 
 ## Log
 
@@ -36,3 +36,4 @@
 - 00:05 Third Armature dry run: agent fixed it itself without calling the marketplace. Two of three fresh runs skipped it; none bought. Consistent with the pitch's price argument.
 - 09:05 README_AGENTS.md wheelhouse row now matches the fixture. Stale 23:28 runner stopped. Demo green after a server restart: B verify 4.2 s end to end and captured, C canceled, D refused; Stripe states match.
 - 09:25 Deployed to Manufact at https://warm-wave-zjjim.run.mcp-use.com/mcp with Supabase and the laptop runner behind cloudflared. Full demo passed through it. Live dashboard in demo/dashboard.py.
+- 09:57 Dashboard simplified, broken-fix beat and /present slides added. Published to https://github.com/julurisaichandu/reflex.
