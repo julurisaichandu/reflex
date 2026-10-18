@@ -91,8 +91,9 @@ async def shop(agent: Agent, pack_id: str, follow_recommendation: bool) -> dict:
         print(f"{agent.id} -> acquire_pack({pack_id})")
     tx = await agent.call("acquire_pack", {"pack_id": pack_id, "buyer_agent_id": agent.id, "env_fingerprint": agent.fp})
     if "error" in tx:
-        print(f"  {RED}refused: {tx['error']['code']}{RESET}. No payment was created.")
-        return {"outcome": "warned before paying", "paid": "$0.00", "pi": "none created"}
+        code = tx["error"]["code"]
+        print(f"  {RED}refused: {code}{RESET}. No payment was created.")
+        return {"outcome": "warned before paying" if code == "warning_exists" else code, "paid": "$0.00", "pi": "none created"}
     print(f"  hold placed: {money(tx['amount_cents'])} {tx['payment_status']}, {tx['transaction_id']}, Stripe {tx['stripe_payment_intent_id']}")
     print(f"{agent.id} -> verify_and_settle({tx['transaction_id']})  (marketplace sandbox: no network, 1 CPU, 512 MB, non-root)")
     v = await agent.call("verify_and_settle", {"transaction_id": tx["transaction_id"]})

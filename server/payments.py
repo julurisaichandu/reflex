@@ -34,7 +34,7 @@ def authorize(tx_id: str, amount_cents: int, description: str, metadata: dict) -
                 "currency": "usd",
                 "capture_method": "manual",
                 "payment_method": "pm_card_visa",
-                "payment_method_types": ["card"],
+                "allowed_payment_method_types": ["card"],
                 "confirm": True,
                 "description": description,
                 "metadata": metadata,

@@ -4,16 +4,15 @@
 |---|---|---|
 | 0 Skeleton loop | done | `uv run python demo/run_demo.py` against `uv run python -m server.main` |
 | 1 Real sandbox | done | `fixtures/build.sh`, then `uv run python demo/run_demo.py` |
-| 2 Real Stripe | code written, checkpoint blocked | needs `STRIPE_SECRET_KEY`; stub runs until then |
+| 2 Real Stripe | done | captured and canceled PaymentIntents match transaction rows |
 | 3 Warnings + compatibility | done on stub payments | override, no_fixture, re-verify, traversal, and empty-tests paths checked |
-| 4 Demo assets | assets done, checkpoint blocked | `demo/repos/*`, `demo/seller_agent.md`, `demo/buyer_agent.md`, `demo/run_demo.py --reset`; needs real Stripe |
+| 4 Demo assets | done | `uv run python demo/run_demo.py --reset` runs A to D on real Stripe and the real sandbox in 6 s |
 | 5 Deploy + polish | todo | needs Manufact account and your go to push |
 | 6 Stretch | todo | |
 
 ## Blockers
 
 - Supabase `DATABASE_URL` (session pooler). Running on local Postgres until then.
-- Stripe test key.
 
 ## Log
 
@@ -25,3 +24,5 @@
 - 23:17 Phase 1 checkpoint passed. Same pack passes on py311-pip (2.6 s) and fails on py312-pnpm (exit 127, CommandNotFound), redacted evidence stored. Hostile tests contained: network, rootfs and pack writes, env secrets, 50 MB output, 900 MB allocation, fork bomb, 60 s sleep.
 - 23:24 Phase 3 paths verified. Phase 4 assets written. The bug and fix reproduce on the laptop against real PyPI.
 - 23:25 Background review workflow running (money, leaks, sandbox, spec, agent usability).
+- 23:31 Phase 2 checkpoint passed. API 2026-09-30 rejects `payment_method_types`; switched to `allowed_payment_method_types`. agent-b PI succeeded ($1.00 received), agent-c PI canceled ($0), both match DB rows.
+- 23:31 Phase 4 checkpoint passed with real Stripe and the real sandbox.
