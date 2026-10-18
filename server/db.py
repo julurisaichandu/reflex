@@ -107,6 +107,18 @@ def insert_verification(conn, v: dict) -> str:
     ).fetchone()["id"]
 
 
+def latest_verification(conn, tx_id: str) -> dict | None:
+    return conn.execute(
+        "select id, result, evidence from verifications where transaction_id = %s order by created_at desc limit 1",
+        (tx_id,),
+    ).fetchone()
+
+
+def warning_for(conn, verification_id: str) -> str | None:
+    row = conn.execute("select id from warnings where verification_id = %s", (verification_id,)).fetchone()
+    return row and row["id"]
+
+
 def insert_warning(conn, w: dict) -> str:
     return conn.execute(
         """insert into warnings (pack_id, verification_id, env_fingerprint, summary, evidence)

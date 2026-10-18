@@ -1,5 +1,5 @@
 import logging
-import uuid
+import secrets
 
 from server import db, payments
 from server.models import ToolError, summary
@@ -27,7 +27,8 @@ def run(pack_id: str, buyer_agent_id: str, fp: dict, override_warning: bool) -> 
             )
         db.ensure_agent(conn, buyer_agent_id)
 
-    tx_id = f"tx_{uuid.uuid4().hex[:8]}"
+    # A transaction id re-fetches a captured pack, so it needs to be unguessable.
+    tx_id = f"tx_{secrets.token_hex(8)}"
     try:
         pi_id = payments.authorize(
             tx_id,

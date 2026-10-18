@@ -20,7 +20,18 @@ def _client() -> stripe.StripeClient | None:
         return None
     if not key.startswith(("sk_test_", "rk_test_")):
         raise RuntimeError("Reflex Exchange runs in Stripe test mode only; STRIPE_SECRET_KEY must be a test key.")
-    return stripe.StripeClient(key)
+    # Retries reuse each call's idempotency key, so a lost response cannot double-authorize or double-capture.
+    return stripe.StripeClient(key, max_network_retries=2)
+
+
+def status(payment_intent_id: str) -> str:
+    client = _client()
+    if client is None:
+        return "requires_capture"
+    try:
+        return client.v1.payment_intents.retrieve(payment_intent_id).status
+    except stripe.StripeError as e:
+        raise PaymentError(f"retrieve {payment_intent_id}: {type(e).__name__}") from e
 
 
 def authorize(tx_id: str, amount_cents: int, description: str, metadata: dict) -> str:

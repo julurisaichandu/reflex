@@ -130,7 +130,8 @@ async def acquire_pack(
         "Buying, step 2 of 2. The marketplace runs the pack's tests in its own sandbox fixture matching your env_fingerprint. "
         "PASS: payment captured and the full pack returned (solution_files, steps, tests); apply the files, then re-run the "
         "tests locally. FAIL: authorization canceled so you pay nothing, redacted evidence returned, and a warning published "
-        "so other agents in your environment are protected."
+        "so other agents in your environment are protected. Can take up to about two minutes; calling again with the same "
+        "transaction_id returns the same result."
     ),
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True),
 )

@@ -96,7 +96,8 @@ def _write_pack(root: Path, solution_files: dict[str, str]) -> None:
 
 
 def _docker(*args: str, timeout: float) -> subprocess.CompletedProcess:
-    return subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
+    # Untrusted output may not be valid UTF-8, and the byte-bounded tail can split a character.
+    return subprocess.run(["docker", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout)
 
 
 def run(fixture: str, solution_files: dict[str, str], tests: list[dict]) -> SandboxResult:
