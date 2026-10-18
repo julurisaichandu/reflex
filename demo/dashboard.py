@@ -64,15 +64,18 @@ def state() -> dict:
                            "sub": "Stripe captured the payment." if paid else "Stripe released the hold. Nothing was charged."})
     for w in warnings:
         events.append({"at": w["created_at"], "step": "warning", "tone": "red", "text": "A free warning was saved",
-                       "sub": f"The next agent on {env(w['env_fingerprint'])} is warned before it pays anything."})
+                       "sub": f"The next agent on {env(w['env_fingerprint'])} is warned before it buys this fix."})
     events.sort(key=lambda ev: (ev["at"], RANK[ev["step"]]))
     return {"mcp_url": MCP_URL, "running": demo_lock.locked(),
             "events": [{**ev, "at": ev["at"].isoformat()} for ev in events]}
 
 
-def run_demo() -> None:
+SCRIPTS = {"/run-demo": ["run_demo.py", "--reset", "--pace", "3"], "/run-broken": ["broken_fix.py"]}
+
+
+def run_script(args: list[str]) -> None:
     try:
-        subprocess.run([sys.executable, str(ROOT / "demo" / "run_demo.py"), "--reset", "--pace", "3"],
+        subprocess.run([sys.executable, str(ROOT / "demo" / args[0]), *args[1:]],
                        cwd=ROOT, env={**os.environ, "MCP_URL": MCP_URL}, check=False)
     finally:
         demo_lock.release()
@@ -96,11 +99,11 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, PAGE.encode(), "text/html; charset=utf-8")
 
     def do_POST(self):
-        if self.path != "/run-demo":
+        if self.path not in SCRIPTS:
             return self._send(404, b"{}", "application/json")
         started = demo_lock.acquire(blocking=False)
         if started:
-            threading.Thread(target=run_demo, daemon=True).start()
+            threading.Thread(target=run_script, args=(SCRIPTS[self.path],), daemon=True).start()
         self._send(200, json.dumps({"started": started}).encode(), "application/json")
 
     def log_message(self, *args):
@@ -122,6 +125,8 @@ h1{font-size:40px;font-weight:700;letter-spacing:-.02em;margin:0}
 .lead{font-size:19px;line-height:1.5;color:var(--muted);margin:10px 0 28px}
 button{font:600 16px Inter,system-ui,sans-serif;background:var(--blue);color:#fff;border:0;border-radius:12px;padding:14px 26px;cursor:pointer}
 button:disabled{background:#c7d2fe;cursor:default}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.ghost{background:#fff;color:var(--blue);border:1px solid #c7d2fe}.ghost:disabled{background:#fff;color:#c7d2fe}
 .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:40px 0 44px}
 .step{border:1px solid var(--line);border-radius:16px;padding:18px;transition:all .3s}
 .num{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-weight:600;font-size:14px;color:var(--muted);margin-bottom:12px;transition:all .3s}
@@ -146,7 +151,7 @@ h2{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;le
 </style></head><body><div class="wrap">
 <h1>Reflex Exchange</h1>
 <p class="lead">AI agents sell fixes to each other. A buyer pays only if the fix works in its own setup.</p>
-<button id="run">Run the demo</button>
+<div class="actions"><button id="run">Run the demo</button><button id="broken" class="ghost">Try a broken fix</button></div>
 <div class="flow">
  <div class="step" data-s="publish"><div class="num">1</div><h3>Seller lists a fix</h3><p>With the tests that prove it works.</p></div>
  <div class="step" data-s="hold"><div class="num">2</div><h3>Buyer holds $1</h3><p>Reserved on the card. Not charged yet.</p></div>
@@ -166,7 +171,7 @@ async function tick(){
   let s; try{ s=await (await fetch("/state")).json(); }catch(e){ return; }
   if(s.error) return;
   $("url").textContent=s.mcp_url;
-  $("run").disabled=s.running; $("run").textContent=s.running?"Running...":"Run the demo";
+  $("run").disabled=s.running; $("run").textContent=s.running?"Running...":"Run the demo"; $("broken").disabled=s.running;
   const done=new Set(s.events.map(e=>STEP[e.step])), last=s.events[s.events.length-1];
   document.querySelectorAll(".step").forEach(el=>{
     el.classList.toggle("done",done.has(el.dataset.s));
@@ -179,6 +184,7 @@ async function tick(){
   }
 }
 $("run").onclick=async()=>{ $("run").disabled=true; await fetch("/run-demo",{method:"POST"}); };
+$("broken").onclick=async()=>{ $("broken").disabled=true; await fetch("/run-broken",{method:"POST"}); };
 tick(); setInterval(tick,1000);
 </script></body></html>"""
 
