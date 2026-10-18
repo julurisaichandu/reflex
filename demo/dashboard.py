@@ -19,64 +19,55 @@ load_dotenv()
 ROOT = Path(__file__).resolve().parent.parent
 MCP_URL = os.environ.get("MCP_URL", "https://warm-wave-zjjim.run.mcp-use.com/mcp")
 PORT = int(os.environ.get("DASHBOARD_PORT", "8090"))
-RANK = {"publish": 0, "hold": 1, "verify-pass": 2, "verify-fail": 2, "captured": 3, "canceled": 3, "warning": 4}
+RANK = {"publish": 0, "hold": 1, "verify": 2, "settle": 3, "warning": 4}
 demo_lock = threading.Lock()
 
 
 def env(fp: dict) -> str:
-    return f"{fp.get('language', '')}{fp.get('language_version', '')}/{fp.get('package_manager', '')}"
+    return f"{fp.get('language', '').capitalize()} {fp.get('language_version', '')} with {fp.get('package_manager', '')}"
+
+
+def name(agent_id: str) -> str:
+    return "Agent " + agent_id[6:].upper() if agent_id.startswith("agent-") and len(agent_id) == 7 else agent_id
 
 
 def state() -> dict:
     with psycopg.connect(os.environ["DATABASE_URL"], row_factory=dict_row, prepare_threshold=None, connect_timeout=10) as c:
-        packs = c.execute(
-            "select id, seller_agent_id, title, price_cents, env_fingerprint, jsonb_array_length(tests) as tests, created_at "
-            "from packs order by created_at"
-        ).fetchall()
+        packs = c.execute("select seller_agent_id, title, price_cents, created_at from packs order by created_at").fetchall()
         txs = c.execute(
-            """select t.id, t.pack_id, t.buyer_agent_id, t.buyer_env_fingerprint, t.amount_cents, t.status,
-                      t.stripe_payment_intent_id, t.created_at, t.resolved_at,
-                      v.result, v.fixture, v.duration_ms, v.evidence, v.created_at as verified_at
+            """select t.buyer_agent_id, t.buyer_env_fingerprint, t.amount_cents, t.status, t.created_at, t.resolved_at,
+                      v.result, v.evidence, v.created_at as verified_at
                from transactions t left join lateral (
                  select * from verifications v where v.transaction_id = t.id order by v.created_at desc limit 1) v on true
                order by t.created_at"""
         ).fetchall()
-        warnings = c.execute("select id, pack_id, env_fingerprint, summary, created_at from warnings order by created_at").fetchall()
+        warnings = c.execute("select env_fingerprint, created_at from warnings order by created_at").fetchall()
 
     events = []
     for p in packs:
-        events.append({"at": p["created_at"], "step": "publish", "who": p["seller_agent_id"],
-                       "text": f"listed “{p['title']}” for ${p['price_cents'] / 100:.2f}, with {p['tests']} tests that prove it ({env(p['env_fingerprint'])})"})
+        events.append({"at": p["created_at"], "step": "publish", "tone": "blue",
+                       "text": f"{name(p['seller_agent_id'])} listed a fix for ${p['price_cents'] / 100:.2f}", "sub": p["title"]})
     for t in txs:
-        who, e = t["buyer_agent_id"], env(t["buyer_env_fingerprint"])
-        events.append({"at": t["created_at"], "step": "hold", "who": who,
-                       "text": f"on {e} placed a ${t['amount_cents'] / 100:.2f} hold on Stripe. Nothing charged yet."})
+        who, e, amount = name(t["buyer_agent_id"]), env(t["buyer_env_fingerprint"]), f"${t['amount_cents'] / 100:.2f}"
+        events.append({"at": t["created_at"], "step": "hold", "tone": "amber",
+                       "text": f"{who} put {amount} on hold", "sub": f"Not charged yet. {who} runs {e}."})
         if t["verified_at"]:
-            ev = t["evidence"] or {}
-            secs = f" in {t['duration_ms'] / 1000:.1f} s" if t["duration_ms"] else ""
-            text = (f"sandbox {t['fixture']} (no network) re-ran the seller's tests: all passed{secs}" if t["result"] == "pass"
-                    else f"sandbox {t['fixture']} (no network): `{ev.get('failed_test')}` exited {ev.get('exit_code')} ({ev.get('error_class')})")
-            events.append({"at": t["verified_at"], "step": "verify-" + t["result"], "who": who, "text": text})
+            ok, ev = t["result"] == "pass", t["evidence"] or {}
+            events.append({"at": t["verified_at"], "step": "verify", "tone": "green" if ok else "red",
+                           "text": f"The fix {'works' if ok else 'fails'} for {who}",
+                           "sub": f"The seller's tests passed in a sandbox matching {e}, with no internet." if ok
+                           else f"In a sandbox matching {e}, `{ev.get('failed_test')}` failed ({ev.get('error_class')})."})
         if t["resolved_at"]:
-            events.append({"at": t["resolved_at"], "step": t["status"], "who": who,
-                           "text": "payment captured and the pack delivered" if t["status"] == "captured"
-                           else "hold canceled. Paid $0.00"})
+            paid = t["status"] == "captured"
+            events.append({"at": t["resolved_at"], "step": "settle", "tone": "green" if paid else "red",
+                           "text": f"{who} paid {amount} and got the fix" if paid else f"{who} paid $0",
+                           "sub": "Stripe captured the payment." if paid else "Stripe released the hold. Nothing was charged."})
     for w in warnings:
-        events.append({"at": w["created_at"], "step": "warning", "who": "marketplace",
-                       "text": f"published a free warning: every {env(w['env_fingerprint'])} agent now sees it before paying"})
+        events.append({"at": w["created_at"], "step": "warning", "tone": "red", "text": "A free warning was saved",
+                       "sub": f"The next agent on {env(w['env_fingerprint'])} is warned before it pays anything."})
     events.sort(key=lambda ev: (ev["at"], RANK[ev["step"]]))
-
-    return {
-        "mcp_url": MCP_URL,
-        "running": demo_lock.locked(),
-        "packs": [{"id": p["id"], "title": p["title"], "seller": p["seller_agent_id"], "price_cents": p["price_cents"],
-                   "env": env(p["env_fingerprint"]), "tests": p["tests"]} for p in packs],
-        "purchases": [{"id": t["id"], "buyer": t["buyer_agent_id"], "env": env(t["buyer_env_fingerprint"]),
-                       "amount_cents": t["amount_cents"], "status": t["status"], "pi": t["stripe_payment_intent_id"],
-                       "result": t["result"], "pack_id": t["pack_id"]} for t in txs],
-        "warnings": [{"id": w["id"], "env": env(w["env_fingerprint"]), "summary": w["summary"]} for w in warnings],
-        "events": [{**ev, "at": ev["at"].isoformat()} for ev in events],
-    }
+    return {"mcp_url": MCP_URL, "running": demo_lock.locked(),
+            "events": [{**ev, "at": ev["at"].isoformat()} for ev in events]}
 
 
 def run_demo() -> None:
@@ -119,104 +110,76 @@ class Handler(BaseHTTPRequestHandler):
 PAGE = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reflex Exchange</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0b0f17;--panel:#121826;--line:#232c3d;--text:#e6ebf5;--dim:#8b96ab;--green:#2fd18b;--red:#ff5d6c;--amber:#f5b84a;--blue:#5aa7ff;--violet:#a78bfa}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif}
-.wrap{max-width:1280px;margin:0 auto;padding:22px 24px 40px}
-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-h1{margin:0;font-size:26px;letter-spacing:-.3px}h1 span{color:var(--green)}
-.tag{color:var(--dim);margin-top:2px}
-.url{font:13px ui-monospace,Menlo,monospace;background:var(--panel);border:1px solid var(--line);padding:8px 12px;border-radius:10px;color:var(--blue)}
-button{background:var(--green);color:#04130c;border:0;border-radius:10px;padding:11px 18px;font-weight:700;font-size:15px;cursor:pointer}
-button:disabled{background:#2a3446;color:var(--dim);cursor:default}
-.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:22px 0 18px}
-.step{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;position:relative;transition:all .35s}
-.step .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;background:#1d2536;color:var(--dim);margin-bottom:8px}
-.step h3{margin:0 0 4px;font-size:15px}.step p{margin:0;color:var(--dim);font-size:13px}
-.step .count{position:absolute;top:12px;right:12px;font:600 12px ui-monospace,monospace;color:var(--dim)}
-.step.on{border-color:var(--blue);box-shadow:0 0 0 3px #5aa7ff33}.step.on .n{background:var(--blue);color:#06101f}
-.split{display:flex;gap:6px;margin-top:8px}.split div{flex:1;border-radius:8px;padding:6px 8px;font-size:12px;background:#1a2131;color:var(--dim)}
-.split .ok.lit{background:#103424;color:var(--green)}.split .no.lit{background:#3a1419;color:var(--red)}
-.grid{display:grid;grid-template-columns:1.25fr 1fr;gap:16px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
-.panel h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim)}
-.feed{display:flex;flex-direction:column;gap:8px;max-height:720px;overflow:auto}
-.ev{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;background:#0f1522;border-left:4px solid var(--line);animation:in .45s ease}
-.ev .who{font-weight:700;white-space:nowrap}.ev .t{color:var(--dim);font:12px ui-monospace,monospace;margin-left:auto;white-space:nowrap}
-.ev.publish{border-color:var(--violet)}.ev.hold{border-color:var(--amber)}.ev.verify-pass,.ev.captured{border-color:var(--green)}
-.ev.verify-fail,.ev.canceled,.ev.warning{border-color:var(--red)}
-.badge{display:inline-block;font:700 11px ui-monospace,monospace;padding:3px 7px;border-radius:6px;text-transform:uppercase}
-.b-publish{background:#241c3f;color:var(--violet)}.b-hold,.b-authorized{background:#3a2c10;color:var(--amber)}
-.b-verify-pass,.b-captured,.b-pass{background:#103424;color:var(--green)}.b-verify-fail,.b-canceled,.b-warning,.b-fail{background:#3a1419;color:var(--red)}
-.side{display:flex;flex-direction:column;gap:16px}
-.row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0}
-.muted{color:var(--dim);font-size:13px}.mono{font:12px ui-monospace,monospace}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}.stat b{font-size:22px;display:block}
-.empty{color:var(--dim);font-style:italic;padding:8px 0}
-a{color:var(--blue);text-decoration:none}
+:root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--soft:#f8fafc;--blue:#4f46e5;--blue-soft:#eef2ff;
+--green:#059669;--green-soft:#ecfdf5;--red:#e11d48;--red-soft:#fff1f2;--amber:#d97706}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto;padding:56px 24px 64px}
+h1{font-size:40px;font-weight:700;letter-spacing:-.02em;margin:0}
+.lead{font-size:19px;line-height:1.5;color:var(--muted);margin:10px 0 28px}
+button{font:600 16px Inter,system-ui,sans-serif;background:var(--blue);color:#fff;border:0;border-radius:12px;padding:14px 26px;cursor:pointer}
+button:disabled{background:#c7d2fe;cursor:default}
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:40px 0 44px}
+.step{border:1px solid var(--line);border-radius:16px;padding:18px;transition:all .3s}
+.num{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-weight:600;font-size:14px;color:var(--muted);margin-bottom:12px;transition:all .3s}
+.step h3{margin:0 0 4px;font-size:16px;font-weight:600}
+.step p{margin:0;font-size:14px;line-height:1.45;color:var(--muted)}
+.step.done .num{background:var(--ink);border-color:var(--ink);color:#fff}
+.step.now{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-soft)}
+.step.now .num{background:var(--blue);border-color:var(--blue);color:#fff}
+h2{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:0 0 14px}
+.story{display:flex;flex-direction:column;gap:10px}
+.item{display:flex;gap:14px;padding:14px 18px;border-radius:14px;background:var(--soft);animation:in .4s ease}
+.dot{width:10px;height:10px;border-radius:50%;margin-top:7px;flex:none}
+.item b{font-weight:600;font-size:16px}.item .sub{color:var(--muted);font-size:14px;margin-top:3px}
+.blue .dot{background:var(--blue)}.amber .dot{background:var(--amber)}
+.item.green{background:var(--green-soft)}.green .dot{background:var(--green)}
+.item.red{background:var(--red-soft)}.red .dot{background:var(--red)}
+.empty{color:var(--muted);padding:22px;border:1px dashed var(--line);border-radius:14px;text-align:center}
+.foot{margin-top:40px;font-size:13px;color:var(--muted)}
+.foot code{font-family:ui-monospace,Menlo,monospace;color:var(--ink)}
 @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-@media(max-width:900px){.flow{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr}}
+@media(max-width:760px){.flow{grid-template-columns:1fr 1fr}h1{font-size:32px}}
 </style></head><body><div class="wrap">
-<header><div><h1>Reflex <span>Exchange</span></h1><div class="tag">AI agents buy and sell verified fixes. The marketplace sells successes and gives away failures.</div></div>
-<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="url" id="url"></div><button id="run">Run the demo</button></div></header>
-
-<div class="flow" id="flow">
- <div class="step" data-s="publish"><span class="count" id="c-publish"></span><div class="n">1</div><h3>Seller publishes</h3><p>Agent A lists its fix as a ProofPack: files, steps, and the tests that prove it.</p></div>
- <div class="step" data-s="discover"><span class="count">free</span><div class="n">2</div><h3>Buyer discovers</h3><p>A buyer agent searches for free and sees warnings recorded for its environment.</p></div>
- <div class="step" data-s="hold"><span class="count" id="c-hold"></span><div class="n">3</div><h3>Hold, not charge</h3><p>$1.00 is authorized on Stripe. Nothing is charged yet.</p></div>
- <div class="step" data-s="verify"><span class="count" id="c-verify"></span><div class="n">4</div><h3>Sandbox verifies</h3><p>The seller's tests re-run in a no-network sandbox that matches the buyer's environment.</p></div>
- <div class="step" data-s="settle"><div class="n">5</div><h3>Settle</h3><p>Only a pass is paid for.</p>
-  <div class="split"><div class="ok" id="s-ok">Pass: captured, pack delivered</div><div class="no" id="s-no">Fail: canceled, free warning</div></div></div>
+<h1>Reflex Exchange</h1>
+<p class="lead">AI agents sell fixes to each other. A buyer pays only if the fix works in its own setup.</p>
+<button id="run">Run the demo</button>
+<div class="flow">
+ <div class="step" data-s="publish"><div class="num">1</div><h3>Seller lists a fix</h3><p>With the tests that prove it works.</p></div>
+ <div class="step" data-s="hold"><div class="num">2</div><h3>Buyer holds $1</h3><p>Reserved on the card. Not charged yet.</p></div>
+ <div class="step" data-s="verify"><div class="num">3</div><h3>Sandbox tests it</h3><p>The seller's tests run in the buyer's setup.</p></div>
+ <div class="step" data-s="settle"><div class="num">4</div><h3>Pay or release</h3><p>Works: the buyer pays. Fails: $0, plus a free warning.</p></div>
 </div>
-
-<div class="stats"><div class="stat"><span class="muted">Paid for verified fixes</span><b id="t-paid">$0.00</b></div>
-<div class="stat"><span class="muted">Holds canceled, never charged</span><b id="t-saved">$0.00</b></div>
-<div class="stat"><span class="muted">Free warnings protecting agents</span><b id="t-warn">0</b></div></div>
-
-<div class="grid">
- <div class="panel"><h2>Live activity</h2><div class="feed" id="feed"></div></div>
- <div class="side">
-  <div class="panel"><h2>ProofPacks for sale</h2><div id="packs"></div></div>
-  <div class="panel"><h2>Payments (Stripe test mode)</h2><div id="pays"></div></div>
-  <div class="panel"><h2>Free warnings</h2><div id="warns"></div></div>
- </div>
-</div></div>
+<h2>What's happening</h2>
+<div class="story" id="story"></div>
+<p class="foot">Agents connect at <code id="url"></code></p>
+</div>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const money=c=>"$"+(c/100).toFixed(2);
-const LABEL={"publish":"publish","hold":"hold","verify-pass":"sandbox pass","verify-fail":"sandbox fail","captured":"captured","canceled":"canceled","warning":"warning"};
-const STEP={"publish":"publish","hold":"hold","verify-pass":"verify","verify-fail":"verify","captured":"settle","canceled":"settle","warning":"settle"};
-let seen=0;
+const STEP={publish:"publish",hold:"hold",verify:"verify",settle:"settle",warning:"settle"};
+let seen=-1;
 async function tick(){
   let s; try{ s=await (await fetch("/state")).json(); }catch(e){ return; }
   if(s.error) return;
-  $("url").textContent="Agents connect: "+s.mcp_url;
-  $("run").disabled=s.running; $("run").textContent=s.running?"Demo running...":"Run the demo";
-  const caps=s.purchases.filter(p=>p.status==="captured"), cans=s.purchases.filter(p=>p.status==="canceled");
-  $("t-paid").textContent=money(caps.reduce((a,p)=>a+p.amount_cents,0));
-  $("t-saved").textContent=money(cans.reduce((a,p)=>a+p.amount_cents,0));
-  $("t-warn").textContent=s.warnings.length;
-  $("c-publish").textContent=s.packs.length+" listed"; $("c-hold").textContent=s.purchases.length+" holds";
-  $("c-verify").textContent=s.purchases.filter(p=>p.result).length+" runs";
-  $("s-ok").classList.toggle("lit",caps.length>0); $("s-no").classList.toggle("lit",cans.length>0);
-  const last=s.events[s.events.length-1];
-  document.querySelectorAll(".step").forEach(el=>el.classList.toggle("on",!!last&&el.dataset.s===STEP[last.step]));
+  $("url").textContent=s.mcp_url;
+  $("run").disabled=s.running; $("run").textContent=s.running?"Running...":"Run the demo";
+  const done=new Set(s.events.map(e=>STEP[e.step])), last=s.events[s.events.length-1];
+  document.querySelectorAll(".step").forEach(el=>{
+    el.classList.toggle("done",done.has(el.dataset.s));
+    el.classList.toggle("now",!!last&&STEP[last.step]===el.dataset.s);
+  });
   if(s.events.length!==seen){
-    $("feed").innerHTML=s.events.length?s.events.map(e=>`<div class="ev ${e.step}"><span class="badge b-${e.step}">${LABEL[e.step]}</span><div><span class="who">${esc(e.who)}</span> ${esc(e.text)}</div><span class="t">${new Date(e.at).toLocaleTimeString()}</span></div>`).join(""):'<div class="empty">Empty marketplace. Press "Run the demo" or connect an agent.</div>';
-    $("feed").scrollTop=$("feed").scrollHeight; seen=s.events.length;
+    seen=s.events.length;
+    $("story").innerHTML=seen?s.events.map(e=>`<div class="item ${e.tone}"><span class="dot"></span><div><b>${esc(e.text)}</b><div class="sub">${esc(e.sub)}</div></div></div>`).join("")
+      :'<div class="empty">Press <b>Run the demo</b> to watch two agents try to buy the same fix.</div>';
   }
-  $("packs").innerHTML=s.packs.length?s.packs.map(p=>{
-    const runs=s.purchases.filter(t=>t.pack_id===p.id&&t.result);
-    const chips=[...new Map(runs.map(t=>[t.env,t.result])).entries()].map(([env,r])=>`<span class="badge b-${r}">${esc(env)} ${r}</span>`).join(" ")||'<span class="muted">not verified yet</span>';
-    return `<div class="row"><div><div><b>${esc(p.title)}</b></div><div class="muted">by ${esc(p.seller)} · ${esc(p.env)} · ${p.tests} tests</div><div style="margin-top:6px">${chips}</div></div><b>${money(p.price_cents)}</b></div>`;
-  }).join(""):'<div class="empty">No packs listed yet.</div>';
-  $("pays").innerHTML=s.purchases.length?s.purchases.map(p=>`<div class="row"><div><b>${esc(p.buyer)}</b> <span class="muted">${esc(p.env)}</span><div class="mono"><a target="_blank" href="https://dashboard.stripe.com/test/payments/${esc(p.pi)}">${esc(p.pi)}</a></div></div><div style="text-align:right"><span class="badge b-${p.status}">${p.status}</span><div class="muted">${p.status==="captured"?money(p.amount_cents)+" paid":"$0.00 paid"}</div></div></div>`).join(""):'<div class="empty">No purchases yet.</div>';
-  $("warns").innerHTML=s.warnings.length?s.warnings.map(w=>`<div class="row"><div><span class="badge b-warning">${esc(w.env)}</span><div class="muted" style="margin-top:6px">${esc(w.summary)}</div></div></div>`).join(""):'<div class="empty">No failures recorded.</div>';
 }
 $("run").onclick=async()=>{ $("run").disabled=true; await fetch("/run-demo",{method:"POST"}); };
-tick(); setInterval(tick,1200);
+tick(); setInterval(tick,1000);
 </script></body></html>"""
 
 
