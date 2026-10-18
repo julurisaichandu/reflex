@@ -96,6 +96,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, json.dumps(state()).encode(), "application/json")
             except psycopg.Error as e:
                 return self._send(503, json.dumps({"error": type(e).__name__}).encode(), "application/json")
+        if self.path.split("?")[0] == "/present":
+            return self._send(200, (ROOT / "demo" / "present.html").read_bytes(), "text/html; charset=utf-8")
         self._send(200, PAGE.encode(), "text/html; charset=utf-8")
 
     def do_POST(self):

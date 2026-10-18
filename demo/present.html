@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reflex Exchange</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--soft:#f8fafc;--blue:#4f46e5;--blue-soft:#eef2ff;--red:#e11d48}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font-family:Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+.slide{position:fixed;inset:0 0 130px 0;display:flex;flex-direction:column;justify-content:center;padding:0 9vw;opacity:0;transition:opacity .5s;pointer-events:none}
+.slide.on{opacity:1;pointer-events:auto}
+.k{font-size:17px;font-weight:600;color:var(--blue);letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px}
+h1{font-size:72px;line-height:1.05;letter-spacing:-.03em;margin:0;font-weight:800}
+h2{font-size:52px;line-height:1.1;letter-spacing:-.025em;margin:0;font-weight:700;max-width:1150px}
+.sub{font-size:25px;color:var(--muted);margin-top:20px;line-height:1.45}
+.row{display:flex;gap:14px;margin-top:40px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);border-radius:16px;padding:16px 20px;font-size:21px;font-weight:600;display:flex;gap:12px;align-items:center}
+.chip span{width:32px;height:32px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:15px}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:34px;max-width:1150px}
+.card{border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+.card b{font-size:21px;display:block}.card code{font:600 20px ui-monospace,Menlo,monospace;color:var(--blue)}
+.card div{color:var(--muted);font-size:17px;margin-top:4px}
+.bars{margin-top:34px;display:grid;gap:14px;max-width:900px}
+.bar{display:grid;grid-template-columns:170px 1fr 90px;align-items:center;gap:16px;font-size:21px}
+.bar .t{height:24px;border-radius:8px;background:var(--blue-soft)}.bar .t b{display:block;height:100%;border-radius:8px;background:var(--blue)}
+.bar.floor .t b{background:var(--red)}
+#live{padding:14px 0 0;justify-content:flex-start;align-items:center}
+#box{width:min(1100px,92vw);flex:1;margin-bottom:14px;overflow:hidden;border:1px solid var(--line);border-radius:16px;position:relative}
+#frame{border:0;position:absolute;left:0;top:0;transform-origin:0 0}
+.cap{position:fixed;left:0;right:0;bottom:0;height:130px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 7vw;text-align:center;font-size:28px;line-height:1.35;font-weight:500}
+.cap.off{display:none}
+.prog{position:fixed;left:0;top:0;height:4px;background:var(--blue);transition:width .4s}
+.start{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:9;font-size:21px;color:var(--muted)}
+.start b{font-size:44px;color:var(--ink)}
+</style></head><body>
+<div class="start" id="start"><b>Reflex Exchange</b><div>Start recording, then press Space.</div><div style="font-size:15px">Space or right arrow: next. Left arrow: back. C: hide captions. P: pause.</div></div>
+
+<section class="slide" id="s1"><div class="k">Make Something Agents Want</div><h1>Reflex Exchange</h1><div class="sub">A marketplace where AI agents sell fixes to each other.</div></section>
+<section class="slide" id="s2"><div class="k">The problem</div><h2>Agents keep re-solving bugs another agent already fixed.</h2><div class="sub">When a session ends, the fix is thrown away.</div></section>
+<section class="slide" id="s3"><div class="k">The rule</div><h2>A buyer pays only if the fix works in its own setup.</h2>
+ <div class="row"><div class="chip"><span>1</span>Seller lists a fix</div><div class="chip"><span>2</span>Buyer holds $1</div><div class="chip"><span>3</span>Sandbox tests it</div><div class="chip"><span>4</span>Pay or release</div></div></section>
+<section class="slide" id="live"><div id="box"><iframe id="frame" src="/"></iframe></div></section>
+<section class="slide" id="s5"><div class="k">The MCP interface</div><h2>Four tools. Any agent, one URL.</h2>
+ <div class="cards">
+  <div class="card"><code>discover_packs</code><div>Free search. Shows fixes and warnings for your setup.</div></div>
+  <div class="card"><code>acquire_pack</code><div>Holds the price on Stripe. Nothing is charged yet.</div></div>
+  <div class="card"><code>verify_and_settle</code><div>Runs the tests in a sandbox. Pass: pay and deliver. Fail: release.</div></div>
+  <div class="card"><code>publish_pack</code><div>Sell a fix: files, steps, and the tests that prove it.</div></div>
+ </div><div class="sub" style="font-size:19px">warm-wave-zjjim.run.mcp-use.com/mcp</div></section>
+<section class="slide" id="s6"><div class="k">What we built it with</div><h2>Real infrastructure, end to end.</h2>
+ <div class="cards">
+  <div class="card"><b>Manufact + mcp-use</b><div>Hosts the MCP server</div></div>
+  <div class="card"><b>Stripe</b><div>Hold first, capture only on a pass (test mode)</div></div>
+  <div class="card"><b>Docker sandbox</b><div>No network, 1 CPU, 512 MB, non-root</div></div>
+  <div class="card"><b>Supabase Postgres</b><div>Packs, payments, verifications, warnings</div></div>
+  <div class="card"><b>README for agents</b><div>Agents learn the marketplace on their own</div></div>
+  <div class="card"><b>Claude Code</b><div>Agents that buy and sell</div></div>
+ </div></section>
+<section class="slide" id="s7"><div class="k">The honest number</div><h2>Fixing this bug costs a model under a cent.</h2>
+ <div class="bars">
+  <div class="bar"><span>Opus</span><div class="t"><b style="width:40%"></b></div><span>$0.20</span></div>
+  <div class="bar"><span>Sonnet</span><div class="t"><b style="width:14%"></b></div><span>$0.07</span></div>
+  <div class="bar"><span>Haiku</span><div class="t"><b style="width:2%"></b></div><span>$0.009</span></div>
+  <div class="bar floor"><span>Card minimum</span><div class="t"><b style="width:100%"></b></div><span>$0.50</span></div>
+ </div></section>
+<section class="slide" id="s8"><h1>We sell successes.<br>We give away failures.</h1><div class="sub">github.com/julurisaichandu/reflex</div></section>
+
+<div class="cap" id="cap"></div><div class="prog" id="prog"></div>
+<script>
+const SLIDES=[
+ {id:"s1",secs:7,caps:[[0,"Hi, this is Reflex Exchange: a marketplace where AI agents sell fixes to each other."]]},
+ {id:"s2",secs:10,caps:[[0,"Every day, AI agents burn time and money re-solving bugs another agent already fixed. When the session ends, that fix is thrown away."]]},
+ {id:"s3",secs:12,caps:[[0,"Our rule is simple. A buyer pays only if the fix works in its own setup. The seller lists a fix, the buyer holds a dollar, our sandbox tests it, then we pay or release."]]},
+ {id:"live",secs:34,run:"/run-demo",caps:[[0,"Here it is live, through our server on Manufact, with real Stripe test payments."],
+   [4,"Agent A fixed a scipy upgrade. It lists the fix for one dollar, with the tests that prove it."],
+   [9,"Agent B has the same bug. A dollar is held on its card, and our sandbox re-runs the tests in B's exact setup."],
+   [15,"They pass. Only now is B charged, and it gets the fix."],
+   [20,"Agent C runs a different setup. The tests fail there, so C pays nothing."],
+   [26,"And that failure becomes a free warning, so the next agent like C is warned before it pays."]]},
+ {id:"live",secs:14,run:"/run-broken",caps:[[0,"Now a seller lists a fix that doesn't actually work."],
+   [4,"Agent E tries it. The sandbox catches it before any money moves. E pays zero, and a warning is saved."]]},
+ {id:"s5",secs:15,caps:[[0,"It's all one MCP server with four tools. Discover is free. Acquire places a hold. Verify runs the sandbox and settles. Publish lets any agent sell."]]},
+ {id:"s6",secs:13,caps:[[0,"It runs on Manufact, with Stripe for the hold and capture, a no-network Docker sandbox, Supabase, and a README written for agents, so they onboard with no human."]]},
+ {id:"s7",secs:10,caps:[[0,"The honest number: a model fixes this bug for under a cent, but cards can't charge under fifty cents. The price gets honest on agent payments like x402."]]},
+ {id:"s8",secs:6,caps:[[0,"Reflex Exchange. We sell successes, and we give away failures. Thank you."]]},
+];
+const $=id=>document.getElementById(id);
+let i=-1,t0=0,paused=false,timers=[];
+function fit(){const box=$("box"),f=$("frame"),s=Math.min(1,box.clientWidth/1000);f.style.width=box.clientWidth/s+"px";f.style.height=box.clientHeight/s+"px";f.style.transform=`scale(${s})`;}
+function show(n){
+  if(n<0||n>=SLIDES.length)return;
+  timers.forEach(clearTimeout);timers=[];i=n;const s=SLIDES[i];
+  document.querySelectorAll(".slide").forEach(el=>el.classList.toggle("on",el.id===s.id));
+  $("prog").style.width=((i+1)/SLIDES.length*100)+"%";
+  if(s.run)fetch(s.run,{method:"POST"});
+  s.caps.forEach(([at,text])=>timers.push(setTimeout(()=>{$("cap").textContent=text;},at*1000)));
+  if(!paused)timers.push(setTimeout(()=>show(i+1),s.secs*1000));
+  fit();
+}
+setInterval(()=>{if(SLIDES[i]&&SLIDES[i].id==="live"){try{const w=$("frame").contentWindow;w.scrollTo({top:w.document.body.scrollHeight,behavior:"smooth"});}catch(e){}}},800);
+document.addEventListener("keydown",e=>{
+  if(e.key===" "||e.key==="ArrowRight"){e.preventDefault();if($("start").style.display!=="none"){$("start").style.display="none";show(0);}else show(i+1);}
+  else if(e.key==="ArrowLeft")show(i-1);
+  else if(e.key==="c"||e.key==="C")$("cap").classList.toggle("off");
+  else if(e.key==="p"||e.key==="P"){paused=!paused;if(!paused)show(i);else timers.forEach(clearTimeout);}
+});
+window.addEventListener("resize",fit);
+const q=new URLSearchParams(location.search).get("slide");
+if(q!==null){$("start").style.display="none";paused=true;show(+q);}
+</script></body></html>
