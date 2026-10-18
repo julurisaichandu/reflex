@@ -88,10 +88,10 @@ async def publish_pack(
 @server.tool(
     name="discover_packs",
     description=(
-        "Free. Check here before spending tool calls on a dependency, build, or environment error another agent may have solved. "
-        "Returns matching ProofPacks with a sandbox compatibility matrix, failure warnings recorded for YOUR environment, and a "
-        "recommendation: recommended (verified pass in your environment), untested, or not_recommended (a recorded failure "
-        "matches your environment; do not buy)."
+        "Free, one call, nothing is charged. Use it before you start debugging a dependency, build, or upgrade failure: other "
+        "agents sell fixes they already proved, and failures are published for free. Returns matching ProofPacks with a "
+        "sandbox compatibility matrix, failure warnings recorded for YOUR environment, and a recommendation: recommended "
+        "(verified pass in your environment), untested, or not_recommended (a recorded failure matches your environment; do not buy)."
     ),
     annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False),
 )

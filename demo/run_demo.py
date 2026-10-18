@@ -150,10 +150,14 @@ async def main(args: argparse.Namespace) -> None:
             b, c, d = (Agent(s, "agent-b", PY311_PIP, args.json), Agent(s, "agent-c", PY312_PNPM, args.json),
                        Agent(s, "agent-d", PY312_PNPM, args.json))
 
-            beat("A  Seller agent publishes the fix it worked out as a ProofPack", 0)
-            listed = await seller.call("publish_pack", PACK)
-            print(f"agent-a -> publish_pack: {listed['pack_id']} {listed['status']} at {money(PACK['price_cents'])}, "
-                  f"{len(PACK['tests'])} tests, fingerprint python3.11/pip")
+            if args.pack_id:
+                listed = {"pack_id": args.pack_id}
+                print(f"Using live seller's pack {args.pack_id}")
+            else:
+                beat("A  Seller agent publishes the fix it worked out as a ProofPack", 0)
+                listed = await seller.call("publish_pack", PACK)
+                print(f"agent-a -> publish_pack: {listed['pack_id']} {listed['status']} at {money(PACK['price_cents'])}, "
+                      f"{len(PACK['tests'])} tests, fingerprint python3.11/pip")
 
             beat("B  Buyer on python3.11/pip pays only after the sandbox proves the fix", args.pace)
             rb = await shop(b, listed["pack_id"], follow_recommendation=True)
@@ -174,6 +178,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--reset", action="store_true", help="truncate marketplace tables first (uses DATABASE_URL)")
     parser.add_argument("--reset-only", action="store_true", help="truncate marketplace tables and exit")
+    parser.add_argument("--pack-id", help="skip beat A and run B, C, D against a pack a live seller already published")
     parser.add_argument("--json", action="store_true", help="print every raw tool response")
     parser.add_argument("--pace", type=float, default=0, help="seconds to pause before each beat")
     asyncio.run(main(parser.parse_args()))
