@@ -29,6 +29,11 @@ A fresh Opus agent given only the server and a broken repo called `discover_pack
 - Not "x402 compliant". Say "Stripe-based, x402-shaped".
 - Not "the seller gets paid". Payments settle to the marketplace in test mode, and there are no payouts.
 - Not "guaranteed to work". Say "the seller's own tests passed in a fixture matching your environment".
+- Not "exactly-once purchases" or "signed receipts". A retried `acquire_pack` places a second hold, and receipts are plain records.
+
+## If judges ask how this differs from other agent-memory projects
+
+We don't grade. We re-run. Deja Do remembers how an agent solved a task, and custos checks an agent's report against its own session log; both trust the agent's own records, and Deja Do says it does not verify task success. Interlock makes an approved action, like a Stripe refund, land once. Reflex Exchange captures the hold only after the seller's own tests pass in a no-network fixture matching the buyer's environment, and when they fail it cancels the hold and publishes the failure as a free warning that every later agent in that environment sees before paying.
 
 ## Recording the backup video
 

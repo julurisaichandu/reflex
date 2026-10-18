@@ -1,8 +1,10 @@
+import unicodedata
 from pathlib import PurePosixPath
 
 from server import db
 from server.models import ToolError
 
+TEXT_LIMITS = {"title": 200, "task_signature": 500, "description": 1000}
 MAX_FILES = 20
 MAX_TOTAL_BYTES = 256 * 1024
 MAX_TESTS = 10
@@ -19,9 +21,22 @@ def _check_paths(paths: list[str]) -> None:
             raise ToolError("invalid_pack", f"solution_files key {path!r} is a file and also a directory of another key.")
 
 
+def _check_listing_text(pack: dict) -> None:
+    # Listing text reaches every buyer agent's context for free, so it is bounded and kept to visible characters.
+    for field, limit in TEXT_LIMITS.items():
+        value = pack[field]
+        if field != "description" and not value.strip():
+            raise ToolError("invalid_pack", f"{field} must not be empty.")
+        if len(value) > limit:
+            raise ToolError("invalid_pack", f"{field} is limited to {limit} characters.")
+        if any(unicodedata.category(ch) in ("Cc", "Cf", "Cs") and ch not in "\n\t" for ch in value):
+            raise ToolError("invalid_pack", f"{field} contains control or invisible formatting characters.")
+
+
 def run(pack: dict) -> dict:
     files = pack["trace"]["solution_files"]
     tests = pack["tests"]
+    _check_listing_text(pack)
     if not tests:
         raise ToolError("invalid_pack", "tests must contain at least one command that proves the solution works.")
     if not files:

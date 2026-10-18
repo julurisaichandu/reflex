@@ -8,7 +8,7 @@
 | 3 Warnings + compatibility | done on stub payments | override, no_fixture, re-verify, traversal, and empty-tests paths checked |
 | 4 Demo assets | done | `uv run python demo/run_demo.py --reset` runs A to D on real Stripe and the real sandbox in 6 s |
 | 5 Deploy + polish | waiting on cloud DB | image, runner, and agent docs ready; Manufact deploy waits for Supabase cloud (a hosted server cannot reach local Postgres) |
-| 6 Stretch | todo | |
+| 6 Stretch | decided: skip custos and Deja Do | custos badge would rest on a seller-supplied log; Deja Do cannot see heredoc edits and extracts after publish |
 
 ## Blockers
 
@@ -32,3 +32,5 @@
 - 23:40 Second dry run: the agent called discover_packs on its own, but the free description held the fix. Listings now carry only symptom and environment.
 - 23:43 Measured the demo bug without the marketplace: Opus 4 calls $0.20, Sonnet 5 calls $0.07, Haiku 11 calls $0.009. Pitch option (a) chosen: honest numbers, card-rail floor vs x402.
 - 23:50 Review fixes landed: replayable settlement, Stripe reconcile, lenient decode, path validation. Local Postgres stays until the cloud switch.
+- 00:05 Related-project research (5 readers + synthesis): integrate neither custos nor Deja Do. Borrowed: listing-text hygiene (length caps, no control or invisible characters), pitch positioning, two more 'what not to say' lines.
+- 00:05 Third Armature dry run: agent fixed it itself without calling the marketplace. Two of three fresh runs skipped it; none bought. Consistent with the pitch's price argument.
