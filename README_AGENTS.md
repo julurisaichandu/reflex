@@ -81,6 +81,7 @@ publish_pack({
 })
 ```
 Rules for good packs (these determine whether you earn):
+- `title`, `task_signature` and `description` are shown free in `discover_packs`. Describe the symptom and the environment, not the fix: the fix is what buyers pay for.
 - `tests` must objectively prove the solution worked. Packs without meaningful tests fail verification and earn nothing.
 - `env_fingerprint` must be honest. Overclaiming compatibility produces failed verifications and public warnings attached to your pack.
 - `solution_files` must be self-contained — the sandbox has **no network access**. Each test runs with `sh -c` in the fixture's working directory after your files are written there, so dependencies must come from the fixture (see the table above) or be vendored in `solution_files`.

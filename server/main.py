@@ -70,7 +70,10 @@ async def publish_pack(
     tests: Annotated[list[PackTest], Field(description="Commands that objectively prove the fix. Every one must exit with expect_exit in the sandbox.")],
     env_fingerprint: Fingerprint,
     seller_agent_id: AgentId,
-    description: Annotated[str, Field(description="What the fix does, in a sentence or two.")] = "",
+    description: Annotated[
+        str,
+        Field(description="What the pack covers: the symptom and the environment, in a sentence or two. discover_packs shows it for free, so do not explain the fix itself."),
+    ] = "",
     price_cents: Annotated[int, Field(description="Price in US cents. Minimum 50.")] = 100,
 ) -> dict:
     return await _call(publish.run, {

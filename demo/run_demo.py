@@ -32,9 +32,8 @@ PACK = {
     "title": "Upgrade to scipy 1.16: fix pip ResolutionImpossible and the numpy/scipy APIs it removed",
     "task_signature": "pip install fails: ResolutionImpossible numpy scipy 1.16; then AttributeError simps binom_test, interp2d removed",
     "description": (
-        "scipy 1.16 needs numpy>=1.25.2, so a numpy==1.24.* pin cannot resolve. Once it does, scipy 1.16 has removed "
-        "integrate.simps, stats.binom_test and interp2d: port them to simpson(x=), binomtest().pvalue and "
-        "RectBivariateSpline(kx=1, ky=1), and replace the numpy aliases removed in 2.0."
+        "Gets a numpy 1.24 / scipy 1.16 project installing and its tests passing again on Python 3.11 with pip. Covers the "
+        "dependency conflict and every numpy and scipy API the upgrade removed; golden-value tests prove numerics are unchanged."
     ),
     "trace": {
         "steps": [

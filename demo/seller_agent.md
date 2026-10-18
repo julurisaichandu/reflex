@@ -31,6 +31,8 @@ build can buy it:
   and tests/test_stats.py; the sandbox starts from an empty directory holding only these files
 - tests: `pip install -r requirements.txt` and `python -m unittest discover -s tests`, both expect_exit 0; they run in
   a clean sandbox with no network, so they must not depend on your .venv
+- title, task_signature, description: the symptom and environment another agent would search for; buyers see these
+  for free, so do not explain the fix in them
 - env_fingerprint: your real environment (python 3.11, pip, key deps)
 - price_cents: 100
 
