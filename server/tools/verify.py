@@ -1,8 +1,11 @@
+import logging
 import threading
 from contextlib import contextmanager
 
 from server import db, payments, redact, sandbox
 from server.models import ToolError, summary
+
+log = logging.getLogger("reflex.verify")
 
 FAIL_NOTE = (
     "Pack contents withheld. Your authorization was canceled; you were not charged. "
@@ -50,7 +53,16 @@ def run(tx_id: str) -> dict:
                 "Your authorization was canceled; you were not charged.",
             )
 
-        result = sandbox.run(fixture, pack["trace"]["solution_files"], pack["tests"])
+        try:
+            result = sandbox.run(fixture, pack["trace"]["solution_files"], pack["tests"])
+        except sandbox.SandboxUnavailable:
+            log.exception("sandbox unavailable for %s", tx_id)
+            raise ToolError(
+                "sandbox_unavailable",
+                "The verification sandbox is temporarily unavailable. Your authorization is still held and nothing "
+                "was charged. Retry verify_and_settle shortly.",
+                retryable=True,
+            )
         verification = {
             "transaction_id": tx_id,
             "pack_id": pack["id"],

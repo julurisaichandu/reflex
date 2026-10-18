@@ -11,7 +11,7 @@ MAX_CMD_CHARS = 1000
 
 def _check_path(path: str) -> None:
     p = PurePosixPath(path)
-    if not path or "\x00" in path or p.is_absolute() or ".." in p.parts or path.startswith("~"):
+    if not path or "\x00" in path or p.is_absolute() or ".." in p.parts or path.startswith("~") or path.endswith("/"):
         raise ToolError("invalid_pack", f"solution_files key {path!r} must be a relative path inside the repo.")
 
 
