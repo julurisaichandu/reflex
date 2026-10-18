@@ -1,7 +1,10 @@
+import logging
 import uuid
 
 from server import db, payments
 from server.models import ToolError, summary
+
+log = logging.getLogger("reflex.acquire")
 
 NEXT_STEP = (
     "Call verify_and_settle with this transaction_id. The pack is delivered only after sandbox verification "
@@ -25,12 +28,16 @@ def run(pack_id: str, buyer_agent_id: str, fp: dict, override_warning: bool) -> 
         db.ensure_agent(conn, buyer_agent_id)
 
     tx_id = f"tx_{uuid.uuid4().hex[:8]}"
-    pi_id = payments.authorize(
-        tx_id,
-        pack["price_cents"],
-        f"Reflex Exchange ProofPack {pack_id}",
-        {"transaction_id": tx_id, "pack_id": pack_id, "buyer_agent_id": buyer_agent_id},
-    )
+    try:
+        pi_id = payments.authorize(
+            tx_id,
+            pack["price_cents"],
+            f"Reflex Exchange ProofPack {pack_id}",
+            {"transaction_id": tx_id, "pack_id": pack_id, "buyer_agent_id": buyer_agent_id},
+        )
+    except payments.PaymentError:
+        log.exception("authorization failed for %s", tx_id)
+        raise ToolError("payment_failed", "Payment authorization failed. Nothing was charged. Retry shortly.", retryable=True)
     try:
         with db.connect() as conn:
             db.insert_transaction(conn, {

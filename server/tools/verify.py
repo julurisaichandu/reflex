@@ -73,7 +73,16 @@ def run(tx_id: str) -> dict:
         receipt = {"transaction_id": tx_id, "amount_cents": tx["amount_cents"], "stripe_payment_intent_id": pi_id}
 
         if result.passed:
-            payments.capture(pi_id, tx_id)
+            try:
+                payments.capture(pi_id, tx_id)
+            except payments.PaymentError:
+                log.exception("capture failed for %s", tx_id)
+                raise ToolError(
+                    "capture_failed",
+                    "Verification passed but payment capture failed, so the pack was not delivered and nothing was "
+                    "charged. Retry verify_and_settle.",
+                    retryable=True,
+                )
             with db.connect() as conn:
                 db.resolve_transaction(conn, tx_id, "captured")
                 db.insert_verification(conn, {

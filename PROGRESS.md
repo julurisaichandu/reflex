@@ -4,9 +4,9 @@
 |---|---|---|
 | 0 Skeleton loop | done | `uv run python demo/run_demo.py` against `uv run python -m server.main` |
 | 1 Real sandbox | done | `fixtures/build.sh`, then `uv run python demo/run_demo.py` |
-| 2 Real Stripe | todo | needs `STRIPE_SECRET_KEY` |
-| 3 Warnings + compatibility | todo | |
-| 4 Demo assets | todo | |
+| 2 Real Stripe | code written, checkpoint blocked | needs `STRIPE_SECRET_KEY`; stub runs until then |
+| 3 Warnings + compatibility | done on stub payments | override, no_fixture, re-verify, traversal, and empty-tests paths checked |
+| 4 Demo assets | assets done, checkpoint blocked | `demo/repos/*`, `demo/seller_agent.md`, `demo/buyer_agent.md`, `demo/run_demo.py --reset`; needs real Stripe |
 | 5 Deploy + polish | todo | needs Manufact account and your go to push |
 | 6 Stretch | todo | |
 
@@ -23,3 +23,5 @@
 - 23:14 Phase 0 checkpoint passed. The four tools run end to end over MCP HTTP with stub payment and sandbox.
 - Known mcp-use 1.7.1 bug: a tools/call before any tools/list crashed in its middleware. `server/main.py` warms the SDK tool cache at startup.
 - 23:17 Phase 1 checkpoint passed. Same pack passes on py311-pip (2.6 s) and fails on py312-pnpm (exit 127, CommandNotFound), redacted evidence stored. Hostile tests contained: network, rootfs and pack writes, env secrets, 50 MB output, 900 MB allocation, fork bomb, 60 s sleep.
+- 23:24 Phase 3 paths verified. Phase 4 assets written. The bug and fix reproduce on the laptop against real PyPI.
+- 23:25 Background review workflow running (money, leaks, sandbox, spec, agent usability).
